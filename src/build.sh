@@ -134,7 +134,7 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.OPM1 := //p' build/core/version_defaults.mk)
     if [ -z $android_version ]; then
-      android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION := //p' build/core/version_defaults.mk)
+      android_version=9.0
     fi
     android_version_major=$(cut -d '.' -f 1 <<< $android_version)
 
@@ -167,6 +167,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         6.*  )    patch_name="android_frameworks_base-M.patch" ;;
         7.*  )    patch_name="android_frameworks_base-N.patch" ;;
         8.*  )    patch_name="android_frameworks_base-O.patch" ;;
+        9.*  )    patch_name="android_frameworks_base-P.patch" ;;
       esac
 
       if ! [ -z $patch_name ]; then
