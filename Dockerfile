@@ -32,7 +32,7 @@ ENV CCACHE_SIZE 50G
 
 # Environment for the LineageOS branches name
 # See https://github.com/LineageOS/android_vendor_cm/branches for possible options
-ENV BRANCH_NAME 'cm-14.1'
+ENV BRANCH_NAME 'lineage-16.0'
 
 # Environment for the device list (separate by comma if more than one)
 # eg. DEVICE_LIST=hammerhead,bullhead,angler
@@ -49,7 +49,7 @@ ENV OTA_URL ''
 ENV USER_NAME 'LineageOS Buildbot'
 ENV USER_MAIL 'lineageos-buildbot@docker.host'
 
-# Include proprietary files, downloaded automatically from github.com/TheMuppets/
+# Include proprietary files, downloaded automatically from github.com/TheMuppets/ and gitlab.com/the-muppets/
 # Only some branches are supported
 ENV INCLUDE_PROPRIETARY true
 
@@ -123,7 +123,7 @@ ENV OPENDELTA_BUILDS_JSON ''
 # You can optionally specify a USERSCRIPTS_DIR volume containing these scripts:
 #  * begin.sh, run at the very beginning
 #  * before.sh, run after the syncing and patching, before starting the builds
-#  * pre-build.sh, run before the build of every device 
+#  * pre-build.sh, run before the build of every device
 #  * post-build.sh, run after the build of every device
 #  * end.sh, run at the very end
 # Each script will be run in $SRC_DIR and must be owned and writeable only by
@@ -161,19 +161,15 @@ RUN mkdir -p $USERSCRIPTS_DIR
 
 # Install build dependencies
 ############################
-RUN echo 'deb http://deb.debian.org/debian sid main' >> /etc/apt/sources.list
-RUN echo 'deb http://deb.debian.org/debian experimental main' >> /etc/apt/sources.list
-COPY apt_preferences /etc/apt/preferences
 RUN apt-get -qq update
 RUN apt-get -qqy upgrade
 
 RUN apt-get install -y bc bison bsdmainutils build-essential ccache cgpt cron \
-      curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick \
+      curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick kmod \
       lib32ncurses5-dev lib32readline-dev lib32z1-dev libesd0-dev liblz4-tool \
       libncurses5-dev libsdl1.2-dev libssl-dev libwxgtk3.0-dev libxml2 \
-      libxml2-utils lsof lzop maven openjdk-7-jdk openjdk-8-jdk pngcrush \
-      procps python rsync schedtool squashfs-tools wget xdelta3 xsltproc yasm \
-      zip zlib1g-dev
+      libxml2-utils lsof lzop maven openjdk-8-jdk pngcrush procps python rsync \
+      schedtool squashfs-tools wget xdelta3 xsltproc yasm zip zlib1g-dev
 
 RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
 RUN chmod a+x /usr/local/bin/repo

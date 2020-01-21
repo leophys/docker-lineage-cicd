@@ -70,6 +70,8 @@ if [ "$LOCAL_MIRROR" = true ]; then
   rm -f .repo/local_manifests/proprietary.xml
   if [ "$INCLUDE_PROPRIETARY" = true ]; then
     wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/TheMuppets/manifests/mirror/default.xml"
+    /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
+      "https://gitlab.com/the-muppets/manifest/raw/mirror/default.xml" .repo/local_manifests/proprietary_gitlab.xml
   fi
 
   echo ">> [$(date)] Syncing mirror repository" | tee -a "$repo_log"
@@ -120,12 +122,15 @@ for branch in ${BRANCH_NAME//,/ }; do
         themuppets_branch=cm-14.1
       elif [[ $branch =~ .*lineage-15\.1.* ]]; then
         themuppets_branch=lineage-15.1
+      elif [[ $branch =~ .*lineage-16\.0.* ]]; then
+        themuppets_branch=lineage-16.0
       else
         themuppets_branch=lineage-15.1
         echo ">> [$(date)] Can't find a matching branch on github.com/TheMuppets, using $themuppets_branch"
       fi
-
       wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/TheMuppets/manifests/$themuppets_branch/muppets.xml"
+      /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
+        "https://gitlab.com/the-muppets/manifest/raw/$themuppets_branch/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
     fi
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
@@ -134,9 +139,21 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.OPM1 := //p' build/core/version_defaults.mk)
     if [ -z $android_version ]; then
-      android_version=9.0
+      android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.PPR1 := //p' build/core/version_defaults.mk)
+      if [ -z $android_version ]; then
+        android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION := //p' build/core/version_defaults.mk)
+        if [ -z $android_version ]; then
+          echo ">> [$(date)] Can't detect the android version"
+          exit 1
+        fi
+      fi
     fi
     android_version_major=$(cut -d '.' -f 1 <<< $android_version)
+
+    if [ "$android_version_major" -lt "7" ]; then
+      echo ">> [$(date)] ERROR: $branch requires a JDK version too old (< 8); aborting"
+      exit 1
+    fi
 
     if [ "$android_version_major" -ge "8" ]; then
       vendor="lineage"
@@ -167,7 +184,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         6.*  )    patch_name="android_frameworks_base-M.patch" ;;
         7.*  )    patch_name="android_frameworks_base-N.patch" ;;
         8.*  )    patch_name="android_frameworks_base-O.patch" ;;
-        9.*  )    patch_name="android_frameworks_base-P.patch" ;;
+	9*  )    patch_name="android_frameworks_base-P.patch" ;; #not sure why 9 not 9.0 but here's a fix that will work until android 90
       esac
 
       if ! [ -z $patch_name ]; then
@@ -221,20 +238,10 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     if [ "$SIGN_BUILDS" = true ]; then
       echo ">> [$(date)] Adding keys path ($KEYS_DIR)"
-      sed -i "1s;^;PRODUCT_DEFAULT_DEV_CERTIFICATE := $KEYS_DIR/releasekey\nPRODUCT_OTA_PUBLIC_KEYS := $KEYS_DIR/releasekey\nPRODUCT_EXTRA_RECOVERY_KEYS := $KEYS_DIR/releasekey\n\n;" "vendor/$vendor/config/common.mk"
+      # Soong (Android 9+) complains if the signing keys are outside the build path
+      ln -sf "$KEYS_DIR" user-keys
+      sed -i "1s;^;PRODUCT_DEFAULT_DEV_CERTIFICATE := user-keys/releasekey\nPRODUCT_OTA_PUBLIC_KEYS := user-keys/releasekey\nPRODUCT_EXTRA_RECOVERY_KEYS := user-keys/releasekey\n\n;" "vendor/$vendor/config/common.mk"
     fi
-
-    if [ "$android_version_major" -ge "7" ]; then
-      jdk_version=8
-    elif [ "$android_version_major" -ge "5" ]; then
-      jdk_version=7
-    else
-      echo ">> [$(date)] ERROR: $branch requires a JDK version too old (< 7); aborting"
-      exit 1
-    fi
-
-    echo ">> [$(date)] Using OpenJDK $jdk_version"
-    update-java-alternatives -s java-1.$jdk_version.0-openjdk-amd64 &> /dev/null
 
     # Prepare the environment
     echo ">> [$(date)] Preparing build environment"
@@ -406,4 +413,3 @@ if [ -f /root/userscripts/end.sh ]; then
   echo ">> [$(date)] Running end.sh"
   /root/userscripts/end.sh
 fi
-
