@@ -17,6 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+if [ "z$DEBUG" != "z" ]; then
+    set -x
+fi
+
 # Copy the user scripts
 mkdir -p /root/userscripts
 cp -r $USERSCRIPTS_DIR/. /root/userscripts

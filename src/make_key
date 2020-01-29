@@ -17,6 +17,10 @@
 # Generates a public/private key pair suitable for use in signing
 # android .apks and OTA update packages.
 
+if [ "z$DEBUG" != "z"  ]; then
+        set -x
+fi
+
 if [ "$#" -lt 2 -o "$#" -gt 3 ]; then
   cat <<EOF
 Usage: $0 <name> <subject> [<keytype>]
