@@ -156,6 +156,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         fi
       fi
     fi
+    echo ">> [$(date)] Detected android version: ${android_version}" | tee -a "$repo_log"
     android_version_major=$(cut -d '.' -f 1 <<< $android_version)
 
     if [ "$android_version_major" -lt "7" ]; then
