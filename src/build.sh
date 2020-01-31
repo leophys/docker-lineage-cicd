@@ -197,7 +197,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         7.*  )    patch_name="android_frameworks_base-N.patch" ;;
         8.*  )    patch_name="android_frameworks_base-O.patch" ;;
         9*  )    patch_name="android_frameworks_base-P.patch" ;; #not sure why 9 not 9.0 but here's a fix that will work until android 90
-        10.*)    patch_name="android_frameworks_base-Q.patch" ;;
+        10*  )    patch_name="android_frameworks_base-Q.patch" ;;
       esac
 
       if ! [ -z $patch_name ]; then
