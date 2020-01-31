@@ -149,10 +149,13 @@ for branch in ${BRANCH_NAME//,/ }; do
     if [ -z $android_version ]; then
       android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.PPR1 := //p' build/core/version_defaults.mk)
       if [ -z $android_version ]; then
-        android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION := //p' build/core/version_defaults.mk)
+        android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.QP1A := //p' build/core/version_defaults.mk)
         if [ -z $android_version ]; then
-          echo ">> [$(date)] Can't detect the android version"
-          exit 1
+          android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION := //p' build/core/version_defaults.mk)
+          if [ -z $android_version ]; then
+            echo ">> [$(date)] Can't detect the android version"
+            exit 1
+          fi
         fi
       fi
     fi
