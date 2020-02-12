@@ -122,23 +122,30 @@ for branch in ${BRANCH_NAME//,/ }; do
     if [ "$INCLUDE_PROPRIETARY" = true ]; then
       if [[ $branch =~ .*cm\-13\.0.* ]]; then
         themuppets_branch=cm-13.0
+        themuppets_gitlab=$themuppets_branch
       elif [[ $branch =~ .*cm-14\.1.* ]]; then
         themuppets_branch=cm-14.1
+        themuppets_gitlab=$themuppets_branch
       elif [[ $branch =~ .*lineage-15\.1.* ]]; then
         themuppets_branch=lineage-15.1
+        themuppets_gitlab=$themuppets_branch
       elif [[ $branch =~ .*lineage-16\.0.* ]]; then
         themuppets_branch=lineage-16.0
+        themuppets_gitlab=$themuppets_branch
       elif [[ $branch =~ .*lineage-17\.0.* ]]; then
         themuppets_branch=lineage-17.0
+        themuppets_gitlab=lineage-16.0
       elif [[ $branch =~ .*lineage-17\.1.* ]]; then
         themuppets_branch=lineage-17.1
+        themuppets_gitlab=lineage-16.0
       else
         themuppets_branch=lineage-16.0
+        themuppets_gitlab=$themuppets_branch
         echo ">> [$(date)] Can't find a matching branch on github.com/TheMuppets, using $themuppets_branch"
       fi
       wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/leophys/manifests/$themuppets_branch/muppets.xml"
-      #/root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
-      #  "https://gitlab.com/the-muppets/manifest/raw/$themuppets_branch/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
+      /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
+        "https://gitlab.com/the-muppets/manifest/raw/$themuppets_gitlab/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
     fi
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
