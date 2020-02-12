@@ -128,13 +128,17 @@ for branch in ${BRANCH_NAME//,/ }; do
         themuppets_branch=lineage-15.1
       elif [[ $branch =~ .*lineage-16\.0.* ]]; then
         themuppets_branch=lineage-16.0
+      elif [[ $branch =~ .*lineage-17\.0.* ]]; then
+        themuppets_branch=lineage-17.0
+      elif [[ $branch =~ .*lineage-17\.1.* ]]; then
+        themuppets_branch=lineage-17.1
       else
         themuppets_branch=lineage-16.0
         echo ">> [$(date)] Can't find a matching branch on github.com/TheMuppets, using $themuppets_branch"
       fi
-      wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/TheMuppets/manifests/$themuppets_branch/muppets.xml"
-      /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
-        "https://gitlab.com/the-muppets/manifest/raw/$themuppets_branch/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
+      wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/leophys/manifests/$themuppets_branch/muppets.xml"
+      #/root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
+      #  "https://gitlab.com/the-muppets/manifest/raw/$themuppets_branch/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
     fi
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
