@@ -76,10 +76,20 @@ The signature spoofing patch can be optionally included with:
 If in doubt, use `restricted`: note that packages that requires the
 FAKE_SIGNATURE permission must be embedded in the build by adding them in
 
+### UnifiedNLP support
+
+If you enable signature spoofing and want to use unifiednlp from microg, the patche
+to support is can be enabled using:
+ * `UNIFIEDNLP_SUPPORT` (false): `true` to patch in unifiednlp support
+
+### Custom Packages
+
  * `CUSTOM_PACKAGES`
 
 Extra packages can be included in the tree by adding the corresponding manifest
 XML to the local_manifests volume.
+
+
 
 ### Proprietary files
 
@@ -123,6 +133,8 @@ Other useful settings are:
  * `WITH_SU (false)`: set to `true` to embed `su` in the build (note that, even
     when set to `false`, you can still enable root by flashing the
     [su installable ZIP][los-extras])
+    NOTE: in lineageos 17.1 the WITH_SU flag was dropped, as it did not functioning properly in Android 10
+    The suggested replacement is Magisk https://www.xda-developers.com/lineageos-dropping-superuser-addonsu-implementation-favor-magisk-manager/
  * `RELEASE_TYPE (UNOFFICIAL)`: change the release type of your builds
  * `BUILD_OVERLAY (false)`: normally each build is done on the source tree, then
     the tree is cleaned with `mka clean`. If you want to be sure that each build
@@ -132,6 +144,8 @@ Other useful settings are:
     mirror of the LineageOS source (> 200 GB)
  * `CRONTAB_TIME (now)`: instead of building immediately and exit, build at the
     specified time (uses standard cron format)
+ * `BOOT_IMG (false)`: copy the build boot.img into the zips folder. This is useful
+    as you may need to flash it first if your device doesn't support custom recoveries
 
 The full list of settings, including the less interesting ones not mentioned in
 this guide, can be found in the [Dockerfile][dockerfile].
@@ -159,6 +173,42 @@ When `BUILD_OVERLAY` is `true`
 When `LOCAL_MIRROR` is `true`:
 
  * `/srv/mirror`, for the LineageOS mirror
+ 
+ 
+## Including MicroG and other package pre-builts
+
+The microG and FDroid packages are not present in the LineageOS repositories,
+and must be provided through an XML in the `/home/user/manifests`.
+
+#### LineageOS < 17.1
+
+[This][prebuiltapks] repo contains some of the most common packages for these
+kind of builds for lineageOS < 17.1: to include it create an XML (the name is irrelevant, as long as
+it ends with `.xml`) in the `/home/user/manifests` folder with this content:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="lineageos4microg/android_prebuilts_prebuiltapks" path="prebuilts/prebuiltapks" remote="github" revision="master" />
+</manifest>
+```
+
+#### LineageOS 17.1
+Some of the packages in the prebuiltapks repo are not updated for Android 10/ LineageOS 17.1
+An example of this is the MicroG apk.
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="SolidHal/android_prebuilts_prebuiltapks" path="packages/apps/prebuilt" remote="github" revision="master" />
+</manifest>
+```
+
+
+Then include `GmsCore` and/or any other pre-built app name in the `CUSTOM_PACKAGES` environment variable like this: 
+```
+    -e "CUSTOM_PACKAGES=GmsCore" \
+```
 
 ## Examples
 

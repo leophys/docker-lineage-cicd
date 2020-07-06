@@ -25,6 +25,9 @@ ENV USER root
 # WARNING: disabling this may slow down a lot your builds!
 ENV USE_CCACHE 1
 
+# We need to specify the ccache binary since it is no longer packaged along with AOSP
+ENV CCACHE_EXEC /usr/bin/ccache
+
 # ccache maximum size. It should be a number followed by an optional suffix: k,
 # M, G, T (decimal), Ki, Mi, Gi or Ti (binary). The default suffix is G. Use 0
 # for no limit.
@@ -67,6 +70,9 @@ ENV CLEAN_OUTDIR false
 # For example, '0 10 * * *' means 'Every day at 10:00 UTC'
 ENV CRONTAB_TIME 'now'
 
+# Put the boot.img in the zips directory
+ENV BOOT_IMG false
+
 # Clean artifacts output after each build
 ENV CLEAN_AFTER_BUILD true
 
@@ -102,6 +108,9 @@ ENV LOGS_SUBDIR true
 # example.
 ENV SIGNATURE_SPOOFING "no"
 
+# Apply the microG unifiedNLP patch
+ENV SUPPORT_UNIFIEDNLP false
+
 # Generate delta files
 ENV BUILD_DELTA false
 
@@ -119,6 +128,9 @@ ENV DELETE_OLD_LOGS 0
 # specified name; leave empty to skip it.
 # Requires ZIP_SUBDIR.
 ENV OPENDELTA_BUILDS_JSON ''
+
+# set the java tool options max memory size
+ENV JAVA_TOOL_OPTIONS "-Xmx6g"
 
 # You can optionally specify a USERSCRIPTS_DIR volume containing these scripts:
 #  * begin.sh, run at the very beginning
@@ -173,24 +185,6 @@ RUN apt-get install -y bc bison bsdmainutils build-essential ccache cgpt cron \
 
 RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
 RUN chmod a+x /usr/local/bin/repo
-
-# Download and build delta tools
-################################
-RUN cd /root/ && \
-        mkdir delta && \
-        git clone --depth=1 https://github.com/omnirom/android_packages_apps_OpenDelta.git OpenDelta && \
-        gcc -o delta/zipadjust OpenDelta/jni/zipadjust.c OpenDelta/jni/zipadjust_run.c -lz && \
-        cp OpenDelta/server/minsignapk.jar OpenDelta/server/opendelta.sh delta/ && \
-        chmod +x delta/opendelta.sh && \
-        rm -rf OpenDelta/ && \
-        sed -i -e 's|^\s*HOME=.*|HOME=/root|; \
-                   s|^\s*BIN_XDELTA=.*|BIN_XDELTA=xdelta3|; \
-                   s|^\s*FILE_MATCH=.*|FILE_MATCH=lineage-\*.zip|; \
-                   s|^\s*PATH_CURRENT=.*|PATH_CURRENT=$SRC_DIR/out/target/product/$DEVICE|; \
-                   s|^\s*PATH_LAST=.*|PATH_LAST=$SRC_DIR/delta_last/$DEVICE|; \
-                   s|^\s*KEY_X509=.*|KEY_X509=$KEYS_DIR/releasekey.x509.pem|; \
-                   s|^\s*KEY_PK8=.*|KEY_PK8=$KEYS_DIR/releasekey.pk8|; \
-                   s|publish|$DELTA_DIR|g' /root/delta/opendelta.sh
 
 # Set the work directory
 ########################

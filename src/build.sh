@@ -155,11 +155,12 @@ for branch in ${BRANCH_NAME//,/ }; do
     builddate=$(date +%Y%m%d)
     repo sync -c --force-sync &>> "$repo_log"
 
-    android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.OPM1 := //p' build/core/version_defaults.mk)
+
+    android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.QP1A := //p' build/core/version_defaults.mk)
     if [ -z $android_version ]; then
-      android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.PPR1 := //p' build/core/version_defaults.mk)
+      android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.OPM1 := //p' build/core/version_defaults.mk)
       if [ -z $android_version ]; then
-        android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.QP1A := //p' build/core/version_defaults.mk)
+        android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION\.PPR1 := //p' build/core/version_defaults.mk)
         if [ -z $android_version ]; then
           android_version=$(sed -n -e 's/^\s*PLATFORM_VERSION := //p' build/core/version_defaults.mk)
           if [ -z $android_version ]; then
@@ -232,6 +233,25 @@ for branch in ${BRANCH_NAME//,/ }; do
       fi
     fi
 
+    if [ "$SUPPORT_UNIFIEDNLP" = "true" ]; then
+      # Determine which patch should be applied to the current Android source tree
+      patch_name=""
+      case $android_version in
+	      10*  )    patch_name="android_frameworks_base-Q.patch" ;;
+      esac
+
+      if ! [ -z $patch_name ]; then
+        cd frameworks/base
+          echo ">> [$(date)] Applying location services patch"
+          patch --quiet -p1 -i "/root/location_services_patches/$patch_name"
+        git clean -q -f
+        cd ../..
+      else
+        echo ">> [$(date)] ERROR: can't find a unifiednlp support patch for the current Android version ($android_version)"
+        exit 1
+      fi
+    fi
+
     echo ">> [$(date)] Setting \"$RELEASE_TYPE\" as release type"
     sed -i "/\$(filter .*\$(${vendor^^}_BUILDTYPE)/,+2d" "vendor/$vendor/config/common.mk"
 
@@ -263,20 +283,27 @@ for branch in ${BRANCH_NAME//,/ }; do
       echo ">> [$(date)] Adding keys path ($KEYS_DIR)"
       # Soong (Android 9+) complains if the signing keys are outside the build path
       ln -sf "$KEYS_DIR" user-keys
-      sed -i "1s;^;PRODUCT_DEFAULT_DEV_CERTIFICATE := user-keys/releasekey\nPRODUCT_OTA_PUBLIC_KEYS := user-keys/releasekey\nPRODUCT_EXTRA_RECOVERY_KEYS := user-keys/releasekey\n\n;" "vendor/$vendor/config/common.mk"
+      if [ "$android_version_major" -lt "10" ]; then
+        sed -i "1s;^;PRODUCT_DEFAULT_DEV_CERTIFICATE := user-keys/releasekey\nPRODUCT_OTA_PUBLIC_KEYS := user-keys/releasekey\nPRODUCT_EXTRA_RECOVERY_KEYS := user-keys/releasekey\n\n;" "vendor/$vendor/config/common.mk"
+      fi
+
+      if [ "$android_version_major" -ge "10" ]; then
+        sed -i "1s;^;PRODUCT_DEFAULT_DEV_CERTIFICATE := user-keys/releasekey\nPRODUCT_OTA_PUBLIC_KEYS := user-keys/releasekey\n\n;" "vendor/$vendor/config/common.mk"
+      fi
     fi
 
     # Prepare the environment
     echo ">> [$(date)] Preparing build environment"
     source build/envsetup.sh > /dev/null
 
-    if [ -f /root/userscripts/before.sh ]; then
-      echo ">> [$(date)] Running before.sh"
-      /root/userscripts/before.sh
-    fi
-
     for codename in ${devices//,/ }; do
       if ! [ -z "$codename" ]; then
+
+        if [ -f /root/userscripts/before.sh ]; then
+            echo ">> [$(date)] Running before.sh"
+            breakfast $codename
+            /root/userscripts/before.sh
+        fi
 
         currentdate=$(date +%Y%m%d)
         if [ "$builddate" != "$currentdate" ]; then
@@ -332,27 +359,6 @@ for branch in ${BRANCH_NAME//,/ }; do
             find out/target/product/$codename -maxdepth 1 -name "lineage-*-$currentdate-*.zip*" -type f -exec sh /root/fix_build_date.sh {} $currentdate $builddate \; &>> "$DEBUG_LOG"
           fi
 
-          if [ "$BUILD_DELTA" = true ]; then
-            if [ -d "delta_last/$codename/" ]; then
-              # If not the first build, create delta files
-              echo ">> [$(date)] Generating delta files for $codename" | tee -a "$DEBUG_LOG"
-              cd /root/delta
-              if ./opendelta.sh $codename &>> "$DEBUG_LOG"; then
-                echo ">> [$(date)] Delta generation for $codename completed" | tee -a "$DEBUG_LOG"
-              else
-                echo ">> [$(date)] Delta generation for $codename failed" | tee -a "$DEBUG_LOG"
-              fi
-              if [ "$DELETE_OLD_DELTAS" -gt "0" ]; then
-                /usr/bin/python /root/clean_up.py -n $DELETE_OLD_DELTAS -V $los_ver -N 1 "$DELTA_DIR/$codename" &>> $DEBUG_LOG
-              fi
-              cd "$source_dir"
-            else
-              # If the first build, copy the current full zip in $source_dir/delta_last/$codename/
-              echo ">> [$(date)] No previous build for $codename; using current build as base for the next delta" | tee -a "$DEBUG_LOG"
-              mkdir -p delta_last/$codename/ &>> "$DEBUG_LOG"
-              find out/target/product/$codename -maxdepth 1 -name 'lineage-*.zip' -type f -exec cp {} "$source_dir/delta_last/$codename/" \; &>> "$DEBUG_LOG"
-            fi
-          fi
           # Move produced ZIP files to the main OUT directory
           echo ">> [$(date)] Moving build artifacts for $codename to '$ZIP_DIR/$zipsubdir'" | tee -a "$DEBUG_LOG"
           cd out/target/product/$codename
@@ -360,6 +366,10 @@ for branch in ${BRANCH_NAME//,/ }; do
             sha256sum "$build" > "$ZIP_DIR/$zipsubdir/$build.sha256sum"
           done
           find . -maxdepth 1 -name 'lineage-*.zip*' -type f -exec mv {} "$ZIP_DIR/$zipsubdir/" \; &>> "$DEBUG_LOG"
+
+          if [ "$BOOT_IMG" = true ]; then
+            find . -maxdepth 1 -name 'boot.img' -type f -exec mv {} "$ZIP_DIR/$zipsubdir/" \; &>> "$DEBUG_LOG"
+          fi
           cd "$source_dir"
           build_successful=true
         else
@@ -418,15 +428,6 @@ for branch in ${BRANCH_NAME//,/ }; do
 
   fi
 done
-
-# Create the OpenDelta's builds JSON file
-if ! [ -z "$OPENDELTA_BUILDS_JSON" ]; then
-  echo ">> [$(date)] Creating OpenDelta's builds JSON file (ZIP_DIR/$OPENDELTA_BUILDS_JSON)"
-  if [ "$ZIP_SUBDIR" != true ]; then
-    echo ">> [$(date)] WARNING: OpenDelta requires zip builds separated per device! You should set ZIP_SUBDIR to true"
-  fi
-  /usr/bin/python /root/opendelta_builds_json.py "$ZIP_DIR" -o "$ZIP_DIR/$OPENDELTA_BUILDS_JSON"
-fi
 
 if [ "$DELETE_OLD_LOGS" -gt "0" ]; then
   find "$LOGS_DIR" -maxdepth 1 -name repo-*.log | sort | head -n -$DELETE_OLD_LOGS | xargs -r rm
