@@ -143,9 +143,12 @@ for branch in ${BRANCH_NAME//,/ }; do
         themuppets_gitlab=$themuppets_branch
         echo ">> [$(date)] Can't find a matching branch on github.com/TheMuppets, using $themuppets_branch"
       fi
-      wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/leophys/manifests/$themuppets_branch/muppets.xml"
+      my_muppets="https://raw.githubusercontent.com/leophys/manifests/$themuppets_branch/muppets.xml"
+      wget -q -O .repo/local_manifests/proprietary.xml "$my_muppets"
+      # Do not fail if this step fails
       /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
-        "https://gitlab.com/the-muppets/manifest/raw/$themuppets_gitlab/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml
+          "https://gitlab.com/the-muppets/manifest/raw/$themuppets_gitlab/muppets.xml" .repo/local_manifests/proprietary_gitlab.xml ||\
+        echo ">> [$(date)] Skipping! Could not build manifest from $my_muppets"
     fi
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
